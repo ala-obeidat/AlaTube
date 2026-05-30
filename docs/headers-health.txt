@@ -1,0 +1,16 @@
+HTTP/1.1 200 OK
+Date: Sat, 30 May 2026 10:53:38 GMT
+Content-Type: application/json
+Content-Length: 16
+Connection: keep-alive
+Access-Control-Allow-Headers: Content-Type, X-Request-Id
+Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS
+Alt-Svc: h3=":443"; ma=86400
+Via: 1.1 Caddy
+X-Request-Id: codex-55fd8ec0-292a-472c-9ce9-5427ac71ebb9
+Cf-Cache-Status: DYNAMIC
+Nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+Report-To: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=DKMGXemD70S4kePYEr%2Fc%2Bntisr5%2FKelHP4DodzQ1bn8t%2Bcv05e285jadVluQvzlvdVb4OB5UzD5pqZ7PnZ2jgtddezne3mZTyKDVzw1a%2FQxfuhFOpa1ANjXCDcWM8IN6%2F5UgYuV9a9u23brtAg%3D%3D"}]}
+Server: cloudflare
+CF-RAY: a03d323c8cf6982a-AMM
+

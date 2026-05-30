@@ -1,0 +1,14 @@
+HTTP/1.1 204 No Content
+Date: Sat, 30 May 2026 10:53:39 GMT
+Connection: keep-alive
+access-control-allow-headers: Content-Type, X-Request-Id
+access-control-allow-methods: GET, POST, DELETE, OPTIONS
+alt-svc: h3=":443"; ma=86400
+via: 1.1 Caddy
+x-request-id: codex-7c6504ef-ebec-4961-b413-acffc165103e
+cf-cache-status: DYNAMIC
+Report-To: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=VWrOCjM3jQfWqJ68QMmz%2F8aB2opjEoIPUdgQ6FOAiYqoWk7UOgu%2BbGLvefJZJbfDSRJmxTfjRx5kx1FxVoHbNxgYowpi08wNhbUywFaaXC5PwnU3m%2BKx3MzSZeQikCqJj7gT0pPcfNjFVgCVlg%3D%3D"}]}
+Nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+Server: cloudflare
+CF-RAY: a03d32401c248ac5-AMM
+

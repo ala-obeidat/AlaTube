@@ -1,0 +1,17 @@
+HTTP/1.1 204 No Content
+Date: Sat, 30 May 2026 10:53:39 GMT
+Connection: keep-alive
+access-control-allow-credentials: true
+access-control-allow-headers: Content-Type, X-Request-Id
+access-control-allow-methods: GET, POST, DELETE, OPTIONS
+access-control-allow-origin: https://alatube.alaobeidat.com
+alt-svc: h3=":443"; ma=86400
+vary: Origin
+via: 1.1 Caddy
+x-request-id: codex-710e73e4-b6b2-4155-b010-25bc094e4f8b
+cf-cache-status: DYNAMIC
+Report-To: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=cushMQeJ6r%2F3LmMqAOAetQuGBN0cccu6V3yokKUaQAsoE8aeOZX1xxglqrnHKaPT7eQB1IAL4%2Bwz%2BMtKAdFgOSYopUCEfgarjWCO%2FVMxvBgfbcTalJjszD5h6r504q0yZyuD38qhTOgDVw6bfA%3D%3D"}]}
+Nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+Server: cloudflare
+CF-RAY: a03d323e4d3c8ab4-AMM
+
