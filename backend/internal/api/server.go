@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -19,6 +20,7 @@ type Server struct {
 	store          *jobs.Store
 	runner         media.Runner
 	allowedOrigins map[string]struct{}
+	apiToken       string
 }
 
 func NewServer(store *jobs.Store, runner media.Runner) *Server {
@@ -26,6 +28,7 @@ func NewServer(store *jobs.Store, runner media.Runner) *Server {
 		store:          store,
 		runner:         runner,
 		allowedOrigins: parseAllowedOrigins(os.Getenv("ALATUBE_ALLOWED_ORIGINS")),
+		apiToken:       strings.TrimSpace(os.Getenv("ALATUBE_API_TOKEN")),
 	}
 }
 
@@ -37,7 +40,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/jobs/{id}/events", s.jobEvents)
 	mux.HandleFunc("GET /api/jobs/{id}/download", s.download)
 	mux.HandleFunc("DELETE /api/jobs/{id}", s.deleteJob)
-	return requestID(s.cors(mux))
+	return requestID(s.cors(s.requireAPIToken(mux)))
 }
 
 func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
@@ -230,7 +233,7 @@ func (s *Server) cors(next http.Handler) http.Handler {
 			w.Header().Set("Vary", "Origin")
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 		}
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Request-Id")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Request-Id, Authorization")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
@@ -266,4 +269,28 @@ var formatIDPattern = regexp.MustCompile(`^[A-Za-z0-9._:+-]{1,64}$`)
 
 func validFormatID(value string) bool {
 	return value != "" && !strings.HasPrefix(value, "-") && formatIDPattern.MatchString(value)
+}
+
+func (s *Server) requireAPIToken(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.apiToken == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		if r.URL.Path == "/api/health" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		provided := ""
+		if h := r.Header.Get("Authorization"); strings.HasPrefix(h, "Bearer ") {
+			provided = h[len("Bearer "):]
+		} else if t := r.URL.Query().Get("token"); t != "" {
+			provided = t
+		}
+		if subtle.ConstantTimeCompare([]byte(provided), []byte(s.apiToken)) != 1 {
+			writeError(w, r, http.StatusUnauthorized, "unauthorized", "API token required.", nil)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }

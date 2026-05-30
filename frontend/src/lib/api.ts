@@ -59,11 +59,23 @@ export function apiURL(path: string): string {
   return base ? `${base}${path}` : path;
 }
 
+export function withToken(url: string): string {
+  const token = (env.PUBLIC_API_TOKEN ?? '').trim();
+  if (!token) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}token=${encodeURIComponent(token)}`;
+}
+
+function authHeaders(): Record<string, string> {
+  const token = (env.PUBLIC_API_TOKEN ?? '').trim();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function postJSON<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
     method: 'POST',
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(body)
   });
   if (!res.ok) {

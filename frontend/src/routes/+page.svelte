@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { analyze, apiURL, createJob, readableBytes, type Analysis, type ApiError, type Format, type JobEvent } from '$lib/api';
+  import { analyze, apiURL, createJob, readableBytes, withToken, type Analysis, type ApiError, type Format, type JobEvent } from '$lib/api';
   import { readPendingShare } from '$lib/share';
 
   let url = '';
@@ -47,7 +47,7 @@
     error = '';
     try {
       const job = await createJob(analysis.videoId, selectedVideo, selectedAudio || undefined);
-      watchJob(apiURL(job.eventsUrl));
+      watchJob(withToken(apiURL(job.eventsUrl)));
     } catch (err) {
       error = messageFor(err);
     } finally {
@@ -149,7 +149,7 @@
         <div class="meter"><span style={`width: ${Math.max(8, jobEvent.progress * 100)}%`}></span></div>
         <p>{jobEvent.message}</p>
         {#if jobEvent.downloadUrl}
-          <a class="download" href={apiURL(jobEvent.downloadUrl)}>Download file</a>
+          <a class="download" href={withToken(apiURL(jobEvent.downloadUrl))}>Download file</a>
         {/if}
         {#if jobEvent.error}
           <p class="error">{jobEvent.error.message}</p>

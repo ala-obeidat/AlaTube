@@ -85,7 +85,74 @@ func TestCORSAllowsConfiguredOrigin(t *testing.T) {
 	}
 }
 
+func TestAPITokenBypassedWhenEnvUnset(t *testing.T) {
+	t.Setenv("ALATUBE_API_TOKEN", "")
+	store := jobs.NewStore(jobs.StoreConfig{Runner: runner{}})
+	server := NewServer(store, runner{})
+	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	rec := httptest.NewRecorder()
+	server.Routes().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("health = %d, want 200", rec.Code)
+	}
+}
+
+func TestAPITokenRejectsMissing(t *testing.T) {
+	t.Setenv("ALATUBE_API_TOKEN", "s3cret")
+	store := jobs.NewStore(jobs.StoreConfig{Runner: runner{}})
+	server := NewServer(store, runner{})
+	req := httptest.NewRequest(http.MethodPost, "/api/analyze", strings.NewReader(`{"url":"https://youtu.be/dQw4w9WgXcQ"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	server.Routes().ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "unauthorized") {
+		t.Fatalf("missing unauthorized: %s", rec.Body.String())
+	}
+}
+
+func TestAPITokenAcceptsBearer(t *testing.T) {
+	t.Setenv("ALATUBE_API_TOKEN", "s3cret")
+	store := jobs.NewStore(jobs.StoreConfig{Runner: runner{}})
+	server := NewServer(store, runner{})
+	req := httptest.NewRequest(http.MethodPost, "/api/analyze", strings.NewReader(`{"url":"https://youtu.be/dQw4w9WgXcQ"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer s3cret")
+	rec := httptest.NewRecorder()
+	server.Routes().ServeHTTP(rec, req)
+	if rec.Code == http.StatusUnauthorized {
+		t.Fatalf("bearer auth rejected: %s", rec.Body.String())
+	}
+}
+
+func TestAPITokenAcceptsQueryParam(t *testing.T) {
+	t.Setenv("ALATUBE_API_TOKEN", "s3cret")
+	store := jobs.NewStore(jobs.StoreConfig{Runner: runner{}})
+	server := NewServer(store, runner{})
+	req := httptest.NewRequest(http.MethodGet, "/api/jobs/abc/events?token=s3cret", nil)
+	rec := httptest.NewRecorder()
+	server.Routes().ServeHTTP(rec, req)
+	if rec.Code == http.StatusUnauthorized {
+		t.Fatalf("query token rejected: %s", rec.Body.String())
+	}
+}
+
+func TestAPITokenHealthExempt(t *testing.T) {
+	t.Setenv("ALATUBE_API_TOKEN", "s3cret")
+	store := jobs.NewStore(jobs.StoreConfig{Runner: runner{}})
+	server := NewServer(store, runner{})
+	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	rec := httptest.NewRecorder()
+	server.Routes().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("health = %d, want 200 (must be exempt)", rec.Code)
+	}
+}
+
 func TestMain(m *testing.M) {
 	os.Unsetenv("ALATUBE_ALLOWED_ORIGINS")
+	os.Unsetenv("ALATUBE_API_TOKEN")
 	os.Exit(m.Run())
 }
