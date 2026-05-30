@@ -157,3 +157,26 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now alatube-cookie-check.timer
 journalctl -u alatube-cookie-check.service -n 20
 ```
+
+### Scheduled rotation (Windows Task Scheduler)
+
+Full server-side automation is not possible — rotation requires a fresh `cookies.txt` exported from a browser logged into YouTube. The split is:
+
+- **Server**: detection via `alatube-cookie-check.timer` (above).
+- **PC**: a Windows scheduled task that watches a drop folder and rotates when a fresh file appears.
+
+Register the daily task once (elevated PowerShell, on your workstation):
+
+```powershell
+cd D:\Code\AlaTube
+.\scripts\install-scheduled-task.ps1
+```
+
+That creates the task `AlaTube Cookie Rotation` (default fire 09:30 local), and the folders `C:\AlaTube\pending` and `C:\AlaTube\archive`. Logs land at `%LOCALAPPDATA%\AlaTube\rotate.log`.
+
+Day-to-day loop:
+
+1. When `journalctl -t alatube-cookie-check` shows a `FAIL` line (or whenever you want to refresh proactively), export `cookies.txt` from a logged-in YouTube tab.
+2. Save it as `C:\AlaTube\pending\cookies.txt`.
+3. Either wait for the next daily run, or run `.\scripts\scheduled-rotate.ps1` immediately.
+4. On success the file is moved into `C:\AlaTube\archive\cookies-<timestamp>.txt` so it isn't rotated again. On failure it stays put for inspection.
