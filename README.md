@@ -126,3 +126,34 @@ go run ./cmd/alatube
 ```
 
 Set `PUBLIC_API_BASE_URL=http://localhost:8080` for a frontend build that talks directly to a local backend.
+
+## Optional API Token
+
+`ALATUBE_API_TOKEN` on the backend and `PUBLIC_API_TOKEN` on the frontend gate the API behind a shared secret. The middleware bypasses when the backend env var is empty, so the gate is off by default. `/api/health` stays exempt for liveness probes. The token can travel as `Authorization: Bearer <token>` for `fetch` or as `?token=<token>` for `EventSource` and download links — the frontend uses both automatically. This is obscurity-grade defense-in-depth, not real auth; a public bundle exposes the token to anyone who reads the JS, so prefer Cloudflare Access for strong access control. Rollout sequence to avoid breaking the live site:
+
+1. Generate a token: `openssl rand -hex 32`.
+2. Add `PUBLIC_API_TOKEN=<token>` in Cloudflare Pages → Settings → Environment variables and trigger a rebuild. The frontend now sends it on every request.
+3. Once the Pages rebuild is live, set `ALATUBE_API_TOKEN=<token>` in `/etc/alatube/alatube.env` on the backend and `sudo systemctl restart alatube`. From this point the API rejects requests without the token.
+
+## YouTube Cookie Rotation
+
+The backend's `ALATUBE_YTDLP_COOKIES` path lets `yt-dlp` authenticate to YouTube and survive bot-challenge prompts on VPS IPs. Cookies expire on YouTube's session schedule, so periodic rotation is required.
+
+To rotate from Windows:
+
+```powershell
+.\scripts\rotate-cookies.ps1 -Path C:\Users\you\Downloads\cookies.txt
+```
+
+The script validates the Netscape header, uploads the new cookies to `/etc/alatube/cookies.txt.new`, runs `scripts/rotate-cookies-remote.sh` on the server to back up the old file, chmod to `0600`, atomically swap, and smoke-test `yt-dlp` against a known video before reporting success.
+
+To install the daily health-check timer (logs an `alatube-cookie-check` line to the journal so cookie expiry surfaces before users see 502s):
+
+```bash
+sudo install -m 0755 scripts/alatube-cookie-check.sh /usr/local/bin/alatube-cookie-check.sh
+sudo install -m 0644 deploy/systemd/alatube-cookie-check.service /etc/systemd/system/alatube-cookie-check.service
+sudo install -m 0644 deploy/systemd/alatube-cookie-check.timer /etc/systemd/system/alatube-cookie-check.timer
+sudo systemctl daemon-reload
+sudo systemctl enable --now alatube-cookie-check.timer
+journalctl -u alatube-cookie-check.service -n 20
+```
