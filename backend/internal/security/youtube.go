@@ -66,8 +66,14 @@ func videoIDFromURL(u *url.URL) (string, bool) {
 	if u.Scheme != "https" && u.Scheme != "http" {
 		return "", false
 	}
+	if u.Port() != "" {
+		return "", false
+	}
 
-	host := strings.ToLower(strings.TrimSuffix(u.Hostname(), "."))
+	host := strings.ToLower(u.Hostname())
+	if strings.HasSuffix(host, ".") {
+		return "", false
+	}
 	path := strings.Trim(u.EscapedPath(), "/")
 	parts := strings.Split(path, "/")
 
@@ -91,4 +97,3 @@ func videoIDFromURL(u *url.URL) (string, bool) {
 
 	return "", false
 }
-

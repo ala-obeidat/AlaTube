@@ -72,7 +72,7 @@ func (r *LocalRunner) Analyze(ctx context.Context, canonicalURL, videoID string)
 		args = append(args, "--cookies", r.cfg.Cookies)
 	}
 	args = append(args, canonicalURL)
-	cmd := exec.CommandContext(ctx, r.cfg.YTDLPPath, args...)
+	cmd := exec.CommandContext(ctx, r.cfg.YTDLPPath, args...) // #nosec G204 -- canonicalURL is rebuilt from a validated YouTube ID; no shell is used.
 	out, err := cmd.Output()
 	if err != nil {
 		return Analysis{}, fmt.Errorf("media analysis failed")
@@ -157,7 +157,7 @@ func (r *LocalRunner) Mux(ctx context.Context, req JobRequest) (string, error) {
 		args = append(args, "--cookies", r.cfg.Cookies)
 	}
 	args = append(args, req.CanonicalURL)
-	cmd := exec.CommandContext(ctx, r.cfg.YTDLPPath, args...)
+	cmd := exec.CommandContext(ctx, r.cfg.YTDLPPath, args...) // #nosec G204 -- format IDs are validated to reject option-like values; no shell is used.
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("media mux failed")
 	}

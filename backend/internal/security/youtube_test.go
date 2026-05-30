@@ -15,6 +15,9 @@ func TestParseYouTubeURL(t *testing.T) {
 		{"playlist without video", "https://www.youtube.com/playlist?list=PLabc", "", false},
 		{"bad host", "https://example.com/watch?v=dQw4w9WgXcQ", "", false},
 		{"bad id chars", "https://www.youtube.com/watch?v=dQw4w9WgXc!", "", false},
+		{"explicit port rejected", "https://www.youtube.com:8080/watch?v=dQw4w9WgXcQ", "", false},
+		{"trailing dot host rejected", "https://www.youtube.com./watch?v=dQw4w9WgXcQ", "", false},
+		{"uppercase host accepted", "https://WWW.YOUTUBE.COM/watch?v=dQw4w9WgXcQ", "dQw4w9WgXcQ", true},
 	}
 
 	for _, tt := range tests {
@@ -32,4 +35,3 @@ func TestParseYouTubeURL(t *testing.T) {
 		})
 	}
 }
-

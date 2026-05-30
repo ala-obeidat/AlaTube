@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -81,6 +82,14 @@ func (s *Server) createJob(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Format.VideoFormatID == "" {
 		writeError(w, r, http.StatusBadRequest, "missing_format", "A video format is required.", map[string]string{"field": "format.videoFormatId"})
+		return
+	}
+	if !validFormatID(req.Format.VideoFormatID) {
+		writeError(w, r, http.StatusBadRequest, "invalid_format", "The video format is invalid.", map[string]string{"field": "format.videoFormatId"})
+		return
+	}
+	if req.Format.AudioFormatID != "" && !validFormatID(req.Format.AudioFormatID) {
+		writeError(w, r, http.StatusBadRequest, "invalid_format", "The audio format is invalid.", map[string]string{"field": "format.audioFormatId"})
 		return
 	}
 	job, err := s.store.Create(canon.ID, canon.URL, req.Format.VideoFormatID, req.Format.AudioFormatID)
@@ -239,9 +248,6 @@ func (s *Server) allowedOrigin(r *http.Request) string {
 	if _, ok := s.allowedOrigins[origin]; ok {
 		return origin
 	}
-	if len(s.allowedOrigins) == 0 {
-		return origin
-	}
 	return ""
 }
 
@@ -254,4 +260,10 @@ func parseAllowedOrigins(raw string) map[string]struct{} {
 		}
 	}
 	return out
+}
+
+var formatIDPattern = regexp.MustCompile(`^[A-Za-z0-9._:+-]{1,64}$`)
+
+func validFormatID(value string) bool {
+	return value != "" && !strings.HasPrefix(value, "-") && formatIDPattern.MatchString(value)
 }
