@@ -1,3 +1,5 @@
+import { env } from '$env/dynamic/public';
+
 export type ApiError = {
   error: {
     code: string;
@@ -45,16 +47,22 @@ export type JobEvent = {
 };
 
 export async function analyze(url: string): Promise<Analysis> {
-  return postJSON('/api/analyze', { url });
+  return postJSON(apiURL('/api/analyze'), { url });
 }
 
 export async function createJob(videoId: string, videoFormatId: string, audioFormatId?: string): Promise<JobCreated> {
-  return postJSON('/api/jobs', { videoId, format: { videoFormatId, audioFormatId } });
+  return postJSON(apiURL('/api/jobs'), { videoId, format: { videoFormatId, audioFormatId } });
+}
+
+export function apiURL(path: string): string {
+  const base = (env.PUBLIC_API_BASE_URL ?? '').trim().replace(/\/$/, '');
+  return base ? `${base}${path}` : path;
 }
 
 async function postJSON<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });

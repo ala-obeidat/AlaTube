@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -14,12 +15,17 @@ import (
 )
 
 type Server struct {
-	store  *jobs.Store
-	runner media.Runner
+	store          *jobs.Store
+	runner         media.Runner
+	allowedOrigins map[string]struct{}
 }
 
 func NewServer(store *jobs.Store, runner media.Runner) *Server {
-	return &Server{store: store, runner: runner}
+	return &Server{
+		store:          store,
+		runner:         runner,
+		allowedOrigins: parseAllowedOrigins(os.Getenv("ALATUBE_ALLOWED_ORIGINS")),
+	}
 }
 
 func (s *Server) Routes() http.Handler {
@@ -30,7 +36,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/jobs/{id}/events", s.jobEvents)
 	mux.HandleFunc("GET /api/jobs/{id}/download", s.download)
 	mux.HandleFunc("DELETE /api/jobs/{id}", s.deleteJob)
-	return requestID(cors(mux))
+	return requestID(s.cors(mux))
 }
 
 func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
@@ -208,9 +214,13 @@ func requestIDFrom(ctx context.Context) string {
 	return value
 }
 
-func cors(next http.Handler) http.Handler {
+func (s *Server) cors(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", sameOriginOnly(r))
+		if origin := s.allowedOrigin(r); origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Vary", "Origin")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+		}
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Request-Id")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 		if r.Method == http.MethodOptions {
@@ -221,10 +231,27 @@ func cors(next http.Handler) http.Handler {
 	})
 }
 
-func sameOriginOnly(r *http.Request) string {
+func (s *Server) allowedOrigin(r *http.Request) string {
 	origin := r.Header.Get("Origin")
 	if origin == "" {
 		return ""
 	}
-	return origin
+	if _, ok := s.allowedOrigins[origin]; ok {
+		return origin
+	}
+	if len(s.allowedOrigins) == 0 {
+		return origin
+	}
+	return ""
+}
+
+func parseAllowedOrigins(raw string) map[string]struct{} {
+	out := map[string]struct{}{}
+	for _, part := range strings.Split(raw, ",") {
+		origin := strings.TrimSpace(part)
+		if origin != "" {
+			out[origin] = struct{}{}
+		}
+	}
+	return out
 }

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { analyze, createJob, readableBytes, type Analysis, type ApiError, type Format, type JobEvent } from '$lib/api';
+  import { analyze, apiURL, createJob, readableBytes, type Analysis, type ApiError, type Format, type JobEvent } from '$lib/api';
   import { readPendingShare } from '$lib/share';
 
   let url = '';
@@ -47,7 +47,7 @@
     error = '';
     try {
       const job = await createJob(analysis.videoId, selectedVideo, selectedAudio || undefined);
-      watchJob(job.eventsUrl);
+      watchJob(apiURL(job.eventsUrl));
     } catch (err) {
       error = messageFor(err);
     } finally {
@@ -56,7 +56,7 @@
   }
 
   function watchJob(eventsUrl: string) {
-    const events = new EventSource(eventsUrl);
+    const events = new EventSource(eventsUrl, { withCredentials: true });
     events.addEventListener('job', (event) => {
       jobEvent = JSON.parse((event as MessageEvent).data);
       if (jobEvent?.state === 'completed' || jobEvent?.state === 'failed' || jobEvent?.state === 'expired') {
@@ -149,7 +149,7 @@
         <div class="meter"><span style={`width: ${Math.max(8, jobEvent.progress * 100)}%`}></span></div>
         <p>{jobEvent.message}</p>
         {#if jobEvent.downloadUrl}
-          <a class="download" href={jobEvent.downloadUrl}>Download file</a>
+          <a class="download" href={apiURL(jobEvent.downloadUrl)}>Download file</a>
         {/if}
         {#if jobEvent.error}
           <p class="error">{jobEvent.error.message}</p>
@@ -321,4 +321,3 @@
     }
   }
 </style>
-

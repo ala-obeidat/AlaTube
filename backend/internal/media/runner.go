@@ -45,28 +45,27 @@ type Runner interface {
 }
 
 type RunnerConfig struct {
-	Image       string
-	WorkDir     string
-	JobTimeout  time.Duration
-	MemoryLimit string
-	CPUs        string
+	WorkDir    string
+	JobTimeout time.Duration
+	YTDLPPath   string
 }
 
-type DockerRunner struct {
+type LocalRunner struct {
 	cfg RunnerConfig
 }
 
-func NewDockerRunner(cfg RunnerConfig) *DockerRunner {
-	return &DockerRunner{cfg: cfg}
+func NewLocalRunner(cfg RunnerConfig) *LocalRunner {
+	if cfg.YTDLPPath == "" {
+		cfg.YTDLPPath = "yt-dlp"
+	}
+	return &LocalRunner{cfg: cfg}
 }
 
-func (r *DockerRunner) Analyze(ctx context.Context, canonicalURL, videoID string) (Analysis, error) {
+func (r *LocalRunner) Analyze(ctx context.Context, canonicalURL, videoID string) (Analysis, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.JobTimeout)
 	defer cancel()
 
-	args := r.baseDockerArgs()
-	args = append(args, r.cfg.Image, "yt-dlp", "--dump-json", "--no-playlist", canonicalURL)
-	cmd := exec.CommandContext(ctx, "docker", args...)
+	cmd := exec.CommandContext(ctx, r.cfg.YTDLPPath, "--dump-json", "--no-playlist", "--no-cache-dir", canonicalURL)
 	out, err := cmd.Output()
 	if err != nil {
 		return Analysis{}, fmt.Errorf("media analysis failed")
@@ -126,7 +125,7 @@ func (r *DockerRunner) Analyze(ctx context.Context, canonicalURL, videoID string
 	}, nil
 }
 
-func (r *DockerRunner) Mux(ctx context.Context, req JobRequest) (string, error) {
+func (r *LocalRunner) Mux(ctx context.Context, req JobRequest) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.JobTimeout)
 	defer cancel()
 
@@ -140,36 +139,17 @@ func (r *DockerRunner) Mux(ctx context.Context, req JobRequest) (string, error) 
 		format += "+" + req.AudioFormatID
 	}
 
-	args := r.baseDockerArgs()
-	args = append(args,
-		"--mount", "type=bind,src="+req.OutputDirectory+",dst=/work",
-		r.cfg.Image,
-		"yt-dlp",
+	args := []string{
 		"--no-playlist",
+		"--no-cache-dir",
 		"--format", format,
 		"--merge-output-format", "mp4",
-		"--output", "/work/output.%(ext)s",
+		"--output", filepath.Join(req.OutputDirectory, "output.%(ext)s"),
 		req.CanonicalURL,
-	)
-	cmd := exec.CommandContext(ctx, "docker", args...)
+	}
+	cmd := exec.CommandContext(ctx, r.cfg.YTDLPPath, args...)
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("media mux failed")
 	}
 	return outputPath, nil
 }
-
-func (r *DockerRunner) baseDockerArgs() []string {
-	return []string{
-		"run", "--rm",
-		"--network", "alatube_media",
-		"--user", "10001:10001",
-		"--read-only",
-		"--security-opt", "no-new-privileges:true",
-		"--cap-drop", "ALL",
-		"--cpus", r.cfg.CPUs,
-		"--memory", r.cfg.MemoryLimit,
-		"--pids-limit", "128",
-		"--tmpfs", "/tmp:rw,noexec,nosuid,size=128m",
-	}
-}
-

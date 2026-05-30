@@ -1,12 +1,90 @@
 # AlaTube
 
-AlaTube is a private static SvelteKit PWA plus Go API for YouTube URL analysis and short-lived, single-use media jobs.
+AlaTube is a private SvelteKit PWA plus Go API for YouTube URL analysis and short-lived, single-use media jobs.
 
-## Architecture
+The intended deployment is deliberately simple:
+
+- Frontend: Cloudflare Pages, connected to the GitHub repo, serving the static SvelteKit build.
+- Backend: one Go binary on an Ubuntu server, managed by `systemd`.
+- Media tools: `yt-dlp` in a Python virtual environment and `ffmpeg` from apt, run under the hardened `alatube` service account.
+
+## Project Layout
 
 - `frontend/`: SvelteKit with `adapter-static`, PWA manifest, service worker share target, and static build output.
 - `backend/`: Go API server. It owns every `/api/*` route, validates canonical YouTube input, manages jobs, streams SSE progress, and enforces single-use download claims.
-- `deploy/`: Caddy, Docker Compose, and a locked-down media runner image for yt-dlp/FFmpeg subprocess execution.
+- `deploy/systemd/`: Ubuntu `systemd` unit and environment template.
+- `deploy/caddy/`: Minimal Caddy reverse proxy for the API domain.
+- `scripts/`: Ubuntu install/update helpers.
+
+## Cloudflare Pages
+
+Connect Cloudflare Pages to the GitHub repository and use:
+
+- Root directory: repository root
+- Build command: `npm install && npm --workspace frontend run build`
+- Build output directory: `frontend/build`
+- Node version: `24`
+- Environment variable: `PUBLIC_API_BASE_URL=https://api.alatube.example.com`
+
+The frontend is static. It does not need SSR.
+
+## Ubuntu Backend
+
+On the server:
+
+```bash
+sudo mkdir -p /opt/alatube
+sudo git clone https://github.com/ala-obeidat/AlaTube.git /opt/alatube/src
+cd /opt/alatube/src
+sudo bash scripts/ubuntu-install.sh
+```
+
+Then edit:
+
+```bash
+sudo nano /etc/alatube/alatube.env
+```
+
+Set `ALATUBE_ALLOWED_ORIGINS` to your Cloudflare Pages production domain and any custom frontend domain:
+
+```ini
+ALATUBE_ALLOWED_ORIGINS=https://your-project.pages.dev,https://alatube.example.com
+```
+
+Restart:
+
+```bash
+sudo systemctl restart alatube
+sudo systemctl status alatube
+```
+
+## Caddy API Proxy
+
+Install the Caddyfile after replacing `api.alatube.example.com`:
+
+```bash
+sudo cp deploy/caddy/Caddyfile /etc/caddy/Caddyfile
+sudo caddy fmt --overwrite /etc/caddy/Caddyfile
+sudo systemctl reload caddy
+```
+
+Point DNS for the API hostname to the Ubuntu server.
+
+## Security Notes
+
+The non-container deployment uses `systemd` hardening instead of Docker:
+
+- dedicated non-login `alatube` user
+- `NoNewPrivileges=true`
+- strict filesystem protection
+- writable access only to `/var/lib/alatube` and `/var/cache/alatube`
+- dropped Linux capabilities
+- CPU, memory, and task limits
+- private tmp directory
+- strict Go job timeout
+- canonical YouTube-only validation before `yt-dlp` execution
+
+This is intentionally simpler than Docker, but it is not the same isolation boundary as a locked-down container. For stronger outbound network control, add host firewall rules for the `alatube` user or put the API behind Cloudflare Access and a server firewall that only permits required egress.
 
 ## API
 
@@ -36,9 +114,9 @@ npm install
 npm --workspace frontend run dev
 ```
 
-## Backend
+## Local Backend
 
-This machine needs Go 1.22+ to run the backend directly:
+This machine needs Go 1.22+:
 
 ```powershell
 cd backend
@@ -46,19 +124,4 @@ go test ./...
 go run ./cmd/alatube
 ```
 
-## Deployment
-
-Build the media runner first, then start the stack:
-
-```bash
-sudo mkdir -p /srv/alatube/jobs
-cd deploy
-docker compose --profile build-only build media-runner
-docker compose up --build
-```
-
-Caddy serves the static frontend and proxies `/api/*` to the Go backend.
-
-The media runner container is invoked with a non-root user, read-only root filesystem, `no-new-privileges`, dropped capabilities, CPU/memory/pid limits, a tmpfs temporary directory, and a strict Go context timeout. Keep the input validator as the first gate before any subprocess execution.
-
-The backend uses the Docker socket to launch that locked-down runner. On a production VPS, prefer a Docker socket proxy or a dedicated runner daemon with only the minimal container-run capability exposed to the API process.
+Set `PUBLIC_API_BASE_URL=http://localhost:8080` for a frontend build that talks directly to a local backend.
