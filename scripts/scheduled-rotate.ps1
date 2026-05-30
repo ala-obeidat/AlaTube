@@ -21,20 +21,22 @@
   Default: C:\AlaTube\archive.
 
 .PARAMETER Server
-  SSH target for rotate-cookies.ps1. Default root@178.105.197.8.
+  SSH target for rotate-cookies.ps1. Defaults to $env:ALATUBE_SERVER.
 
 .PARAMETER Key
-  SSH identity file. Default C:\key2\alfajer.
+  SSH identity file. Defaults to $env:ALATUBE_SSH_KEY.
 
 .EXAMPLE
-  .\scheduled-rotate.ps1
+  # Either pass them explicitly each run, or set env vars in your user profile
+  # and let install-scheduled-task.ps1 bake them into the task action.
+  .\scheduled-rotate.ps1 -Server root@prod.example.com -Key C:\path\to\ssh\key
 #>
 [CmdletBinding()]
 param(
     [string]$PendingPath = 'C:\AlaTube\pending\cookies.txt',
     [string]$ArchiveDir = 'C:\AlaTube\archive',
-    [string]$Server = 'root@178.105.197.8',
-    [string]$Key = 'C:\key2\alfajer'
+    [string]$Server = $env:ALATUBE_SERVER,
+    [string]$Key = $env:ALATUBE_SSH_KEY
 )
 
 $ErrorActionPreference = 'Stop'
@@ -52,6 +54,11 @@ function Log {
 if (-not (Test-Path -LiteralPath $PendingPath)) {
     Log INFO "no pending cookies at $PendingPath, skip"
     exit 0
+}
+
+if (-not $Server -or -not $Key) {
+    Log ERROR 'Server and Key are required. Pass -Server/-Key or set ALATUBE_SERVER/ALATUBE_SSH_KEY env vars. Re-run install-scheduled-task.ps1 with the right args to bake them into the task.'
+    exit 1
 }
 
 if (-not (Test-Path -LiteralPath $ArchiveDir)) {

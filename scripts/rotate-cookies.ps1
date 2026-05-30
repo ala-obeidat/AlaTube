@@ -12,15 +12,17 @@
   Local path to the new cookies.txt (Netscape format).
 
 .PARAMETER Server
-  SSH target. Default root@178.105.197.8.
+  SSH target like user@host. Defaults to $env:ALATUBE_SERVER.
 
 .PARAMETER Key
-  SSH identity file. Default C:\key2\alfajer.
+  SSH identity file. Defaults to $env:ALATUBE_SSH_KEY.
 
 .PARAMETER Video
   YouTube URL used for the post-swap smoke test.
 
 .EXAMPLE
+  $env:ALATUBE_SERVER = 'root@prod.example.com'
+  $env:ALATUBE_SSH_KEY = 'C:\path\to\ssh\key'
   .\rotate-cookies.ps1 -Path C:\Users\me\Downloads\cookies.txt
 #>
 [CmdletBinding()]
@@ -28,14 +30,17 @@ param(
     [Parameter(Mandatory)]
     [string]$Path,
 
-    [string]$Server = 'root@178.105.197.8',
-    [string]$Key = 'C:\key2\alfajer',
+    [string]$Server = $env:ALATUBE_SERVER,
+    [string]$Key = $env:ALATUBE_SSH_KEY,
     [string]$Video = 'https://www.youtube.com/watch?v=jNQXAC9IVRw'
 )
 
 $ErrorActionPreference = 'Stop'
 
+if (-not $Server) { throw 'Server is required. Pass -Server or set $env:ALATUBE_SERVER.' }
+if (-not $Key) { throw 'SSH key is required. Pass -Key or set $env:ALATUBE_SSH_KEY.' }
 if (-not (Test-Path $Path)) { throw "File not found: $Path" }
+if (-not (Test-Path $Key)) { throw "SSH key not found: $Key" }
 
 $file = Get-Item $Path
 $first = (Get-Content $file -TotalCount 1).TrimStart([char]0xFEFF)

@@ -15,18 +15,33 @@
 .PARAMETER TaskName
   Task Scheduler entry name. Default 'AlaTube Cookie Rotation'.
 
+.PARAMETER Server
+  SSH target like user@host. Baked into the task action so the scheduled
+  task does not depend on env vars at fire time. Defaults to
+  $env:ALATUBE_SERVER.
+
+.PARAMETER Key
+  SSH identity file. Baked into the task action. Defaults to
+  $env:ALATUBE_SSH_KEY.
+
 .EXAMPLE
   # In an elevated PowerShell prompt:
   cd D:\Code\AlaTube
-  .\scripts\install-scheduled-task.ps1
+  .\scripts\install-scheduled-task.ps1 -Server root@prod.example.com -Key C:\path\to\ssh\key
 #>
 [CmdletBinding()]
 param(
     [string]$Time = '09:30',
-    [string]$TaskName = 'AlaTube Cookie Rotation'
+    [string]$TaskName = 'AlaTube Cookie Rotation',
+    [string]$Server = $env:ALATUBE_SERVER,
+    [string]$Key = $env:ALATUBE_SSH_KEY
 )
 
 $ErrorActionPreference = 'Stop'
+
+if (-not $Server) { throw 'Server is required. Pass -Server or set $env:ALATUBE_SERVER.' }
+if (-not $Key) { throw 'SSH key is required. Pass -Key or set $env:ALATUBE_SSH_KEY.' }
+if (-not (Test-Path $Key)) { throw "SSH key not found: $Key" }
 
 $here = Split-Path -Parent $PSCommandPath
 $scheduled = Join-Path $here 'scheduled-rotate.ps1'
@@ -41,7 +56,7 @@ foreach ($d in @($pendingDir, $archiveDir)) {
 
 $action = New-ScheduledTaskAction `
     -Execute 'powershell.exe' `
-    -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$scheduled`""
+    -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$scheduled`" -Server `"$Server`" -Key `"$Key`""
 
 $trigger = New-ScheduledTaskTrigger -Daily -At $Time
 

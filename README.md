@@ -139,9 +139,11 @@ Set `PUBLIC_API_BASE_URL=http://localhost:8080` for a frontend build that talks 
 
 The backend's `ALATUBE_YTDLP_COOKIES` path lets `yt-dlp` authenticate to YouTube and survive bot-challenge prompts on VPS IPs. Cookies expire on YouTube's session schedule, so periodic rotation is required.
 
-To rotate from Windows:
+To rotate from Windows, set the SSH target and key once (env vars in your user profile, or pass `-Server`/`-Key` each time):
 
 ```powershell
+[Environment]::SetEnvironmentVariable('ALATUBE_SERVER', 'root@your.server', 'User')
+[Environment]::SetEnvironmentVariable('ALATUBE_SSH_KEY', 'C:\path\to\private\key', 'User')
 .\scripts\rotate-cookies.ps1 -Path C:\Users\you\Downloads\cookies.txt
 ```
 
@@ -165,14 +167,23 @@ Full server-side automation is not possible — rotation requires a fresh `cooki
 - **Server**: detection via `alatube-cookie-check.timer` (above).
 - **PC**: a Windows scheduled task that watches a drop folder and rotates when a fresh file appears.
 
-Register the daily task once (elevated PowerShell, on your workstation):
+The scripts read your SSH target and key from `-Server` / `-Key` parameters or the env vars `ALATUBE_SERVER` / `ALATUBE_SSH_KEY`. There are no defaults — nothing about your prod box is committed to the repo.
+
+Set them once in your user profile (or in the current session before installing):
+
+```powershell
+[Environment]::SetEnvironmentVariable('ALATUBE_SERVER', 'root@your.server', 'User')
+[Environment]::SetEnvironmentVariable('ALATUBE_SSH_KEY', 'C:\path\to\private\key', 'User')
+```
+
+Then register the daily task in an elevated PowerShell prompt. `install-scheduled-task.ps1` bakes the server + key into the task action so the scheduled run does not depend on env vars at fire time:
 
 ```powershell
 cd D:\Code\AlaTube
-.\scripts\install-scheduled-task.ps1
+.\scripts\install-scheduled-task.ps1 -Server root@your.server -Key C:\path\to\private\key
 ```
 
-That creates the task `AlaTube Cookie Rotation` (default fire 09:30 local), and the folders `C:\AlaTube\pending` and `C:\AlaTube\archive`. Logs land at `%LOCALAPPDATA%\AlaTube\rotate.log`.
+That creates the task `AlaTube Cookie Rotation` (default fire 09:30 local), and the folders `C:\AlaTube\pending` and `C:\AlaTube\archive`. Logs land at `%LOCALAPPDATA%\AlaTube\rotate.log`. Re-run the install whenever you want to change the bound server or key.
 
 Day-to-day loop:
 
