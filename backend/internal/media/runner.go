@@ -99,14 +99,7 @@ func (r *LocalRunner) Analyze(ctx context.Context, canonicalURL, videoID string)
 
 	formats := make([]Format, 0, len(payload.FormatsRaw))
 	for _, f := range payload.FormatsRaw {
-		kind := "muxed"
-		codec := f.VCodec
-		if f.VCodec == "none" {
-			kind = "audio"
-			codec = f.ACodec
-		} else if f.ACodec == "none" {
-			kind = "video"
-		}
+		kind, codec := classifyFormat(f.VCodec, f.ACodec)
 		size := f.Filesize
 		if size == 0 {
 			size = f.Approx
@@ -130,6 +123,19 @@ func (r *LocalRunner) Analyze(ctx context.Context, canonicalURL, videoID string)
 		ThumbnailURL:    payload.Thumbnail,
 		Formats:         formats,
 	}, nil
+}
+
+func classifyFormat(vcodec, acodec string) (kind, codec string) {
+	switch {
+	case vcodec == "none" && acodec == "none":
+		return "image", ""
+	case vcodec == "none":
+		return "audio", acodec
+	case acodec == "none":
+		return "video", vcodec
+	default:
+		return "muxed", vcodec
+	}
 }
 
 func (r *LocalRunner) Mux(ctx context.Context, req JobRequest) (string, error) {

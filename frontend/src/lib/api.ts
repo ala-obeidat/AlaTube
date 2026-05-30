@@ -11,7 +11,7 @@ export type ApiError = {
 
 export type Format = {
   formatId: string;
-  kind: 'audio' | 'video' | 'muxed';
+  kind: 'audio' | 'video' | 'muxed' | 'image';
   height?: number;
   fps?: number;
   container?: string;
