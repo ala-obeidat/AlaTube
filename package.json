@@ -1,0 +1,15 @@
+{
+  "name": "alatube",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npm --workspace frontend run dev",
+    "build": "npm --workspace frontend run build",
+    "check": "npm --workspace frontend run check",
+    "test": "npm --workspace frontend run test"
+  },
+  "workspaces": [
+    "frontend"
+  ]
+}
+
