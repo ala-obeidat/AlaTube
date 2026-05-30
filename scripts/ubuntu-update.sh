@@ -4,6 +4,8 @@ set -euo pipefail
 REPO_DIR="${REPO_DIR:-/opt/alatube/src}"
 APP_DIR="${APP_DIR:-/opt/alatube}"
 
+export PATH="/usr/local/go/bin:${PATH}"
+
 cd "${REPO_DIR}"
 git pull --ff-only
 
