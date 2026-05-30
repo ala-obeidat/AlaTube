@@ -20,7 +20,8 @@ Date: 2026-05-30
 - Where: `scripts/ubuntu-install.sh`, `README.md`
 - Evidence: `govulncheck` under Go 1.22.12 reported 19 reachable standard-library vulnerabilities, including `net/http`, `net/url`, `crypto/tls`, and `os/exec` paths. The same scan under Go 1.25.10 reported: `No vulnerabilities found.`
 - Risk: The Ubuntu apt `golang-go` package can lag behind fixed standard-library releases.
-- Fix applied locally: `scripts/ubuntu-install.sh` now installs official Go 1.25.10 under `/usr/local/go`, and `scripts/ubuntu-update.sh` uses it.
+- Fix applied locally: `scripts/ubuntu-install.sh` now installs official Go 1.26.3 under `/usr/local/go`, and `scripts/ubuntu-update.sh` uses it.
+- Follow-up (2026-05-30): a fresh `govulncheck` run on prod under Go 1.26.0 (apt-installed) surfaced 9 newly-reachable stdlib CVEs after the vuln DB updated on 2026-05-29 (TLS 1.3 KeyUpdate DoS, x509 chain validation, IPv6 host parsing in `net/url`, `os.File` `Root` escape in our `http.ServeFile` path). Bumped prod to Go 1.26.3 tarball under `/usr/local/go`, rebuilt the binary, and re-ran the scan: `No vulnerabilities found.` See `docs/govulncheck-go1.26.3.txt`.
 
 ## Medium
 

@@ -4,7 +4,7 @@ set -euo pipefail
 REPO_DIR="${REPO_DIR:-/opt/alatube/src}"
 APP_DIR="${APP_DIR:-/opt/alatube}"
 SERVICE_USER="${SERVICE_USER:-alatube}"
-GO_VERSION="${GO_VERSION:-1.26.0}"
+GO_VERSION="${GO_VERSION:-1.26.3}"
 
 if [[ "${EUID}" -ne 0 ]]; then
   echo "Run this script with sudo." >&2

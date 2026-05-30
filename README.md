@@ -6,7 +6,7 @@ The intended deployment is deliberately simple:
 
 - Frontend: Cloudflare Pages, connected to the GitHub repo, serving the static SvelteKit build.
 - Backend: one Go binary on an Ubuntu server, managed by `systemd`.
-- Go runtime: official Go 1.26.0 tarball installed under `/usr/local/go`.
+- Go runtime: official Go 1.26.3 tarball installed under `/usr/local/go`.
 - Media tools: `yt-dlp` in a Python virtual environment and `ffmpeg` from apt, run under the hardened `alatube` service account.
 
 ## Project Layout
