@@ -16,6 +16,7 @@ func main() {
 		WorkDir:    getenv("ALATUBE_WORK_DIR", "/var/lib/alatube/jobs"),
 		JobTimeout: getenvDuration("ALATUBE_JOB_TIMEOUT", 5*time.Minute),
 		YTDLPPath:  getenv("ALATUBE_YTDLP_PATH", "yt-dlp"),
+		Cookies:    os.Getenv("ALATUBE_YTDLP_COOKIES"),
 	}
 	runner := media.NewLocalRunner(cfg)
 

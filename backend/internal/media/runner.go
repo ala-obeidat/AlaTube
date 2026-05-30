@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -47,7 +48,8 @@ type Runner interface {
 type RunnerConfig struct {
 	WorkDir    string
 	JobTimeout time.Duration
-	YTDLPPath   string
+	YTDLPPath  string
+	Cookies    string
 }
 
 type LocalRunner struct {
@@ -65,7 +67,12 @@ func (r *LocalRunner) Analyze(ctx context.Context, canonicalURL, videoID string)
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.JobTimeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, r.cfg.YTDLPPath, "--dump-json", "--no-playlist", "--no-cache-dir", canonicalURL)
+	args := []string{"--dump-json", "--no-playlist", "--no-cache-dir"}
+	if r.cfg.Cookies != "" {
+		args = append(args, "--cookies", r.cfg.Cookies)
+	}
+	args = append(args, canonicalURL)
+	cmd := exec.CommandContext(ctx, r.cfg.YTDLPPath, args...)
 	out, err := cmd.Output()
 	if err != nil {
 		return Analysis{}, fmt.Errorf("media analysis failed")
@@ -76,14 +83,14 @@ func (r *LocalRunner) Analyze(ctx context.Context, canonicalURL, videoID string)
 		Duration   int    `json:"duration"`
 		Thumbnail  string `json:"thumbnail"`
 		FormatsRaw []struct {
-			FormatID string `json:"format_id"`
-			VCodec   string `json:"vcodec"`
-			ACodec   string `json:"acodec"`
-			Ext      string `json:"ext"`
-			Height   int    `json:"height"`
-			FPS      int    `json:"fps"`
-			Filesize int64  `json:"filesize"`
-			Approx   int64  `json:"filesize_approx"`
+			FormatID string  `json:"format_id"`
+			VCodec   string  `json:"vcodec"`
+			ACodec   string  `json:"acodec"`
+			Ext      string  `json:"ext"`
+			Height   int     `json:"height"`
+			FPS      float64 `json:"fps"`
+			Filesize int64   `json:"filesize"`
+			Approx   int64   `json:"filesize_approx"`
 		} `json:"formats"`
 	}
 	if err := json.Unmarshal(out, &payload); err != nil {
@@ -108,7 +115,7 @@ func (r *LocalRunner) Analyze(ctx context.Context, canonicalURL, videoID string)
 			FormatID:       f.FormatID,
 			Kind:           kind,
 			Height:         f.Height,
-			FPS:            f.FPS,
+			FPS:            int(math.Round(f.FPS)),
 			Container:      f.Ext,
 			Codec:          codec,
 			EstimatedBytes: size,
@@ -145,8 +152,11 @@ func (r *LocalRunner) Mux(ctx context.Context, req JobRequest) (string, error) {
 		"--format", format,
 		"--merge-output-format", "mp4",
 		"--output", filepath.Join(req.OutputDirectory, "output.%(ext)s"),
-		req.CanonicalURL,
 	}
+	if r.cfg.Cookies != "" {
+		args = append(args, "--cookies", r.cfg.Cookies)
+	}
+	args = append(args, req.CanonicalURL)
 	cmd := exec.CommandContext(ctx, r.cfg.YTDLPPath, args...)
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("media mux failed")
